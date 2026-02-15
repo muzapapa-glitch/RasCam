@@ -19,8 +19,8 @@ paths:
     publishUser: admin
     publishPass: changeme  # ИЗМЕНИТЕ!
 
-    # Аутентификация для просмотра
-    readUser: viewer
+    # Аутентификация для просмотра (используем тот же логин/пароль)
+    readUser: admin
     readPass: changeme     # ИЗМЕНИТЕ!
 
     # Запись (опционально)
