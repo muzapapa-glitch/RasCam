@@ -1,0 +1,41 @@
+# MediaMTX Configuration для RasCam
+# Минимальная конфигурация для локальной сети
+
+# Логирование
+logLevel: info
+logDestinations: [stdout]
+
+# RTSP сервер
+rtspAddress: :8554
+protocols: [tcp]
+
+# Пути (streams)
+paths:
+  # Основная камера
+  cam1:
+    source: publisher
+
+    # Аутентификация для публикации (от RasCam)
+    publishUser: admin
+    publishPass: changeme  # ИЗМЕНИТЕ!
+
+    # Аутентификация для просмотра
+    readUser: viewer
+    readPass: changeme     # ИЗМЕНИТЕ!
+
+    # Запись (опционально)
+    # record: yes
+    # recordPath: /media/usb_ssd/streams/%path/%Y-%m-%d_%H-%M-%S-%f
+
+    # Запуск внешней команды при подключении клиента
+    # runOnReady: echo "Stream started"
+    # runOnRead: echo "Client connected"
+
+# WebRTC (для веб-браузеров, опционально)
+# webrtc: yes
+# webrtcAddress: :8889
+
+# HLS (HTTP Live Streaming, опционально)
+# hls: yes
+# hlsAddress: :8888
+# hlsAlwaysRemux: yes

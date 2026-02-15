@@ -1,0 +1,64 @@
+{
+  "camera": {
+    "main_resolution": [1920, 1080],
+    "lores_resolution": [320, 240],
+    "framerate": 15,
+    "rotation": 0,
+    "hflip": false,
+    "vflip": false
+  },
+  "video": {
+    "codec": "h264",
+    "bitrate": 2500000,
+    "quality": 23,
+    "keyframe_interval": 30
+  },
+  "motion_detection": {
+    "enabled": true,
+    "threshold": 7.0,
+    "min_frames": 3,
+    "zones": [
+      {
+        "name": "full_frame",
+        "enabled": true,
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 240
+      }
+    ]
+  },
+  "recording": {
+    "storage_path": "/media/usb_ssd/recordings",
+    "segment_duration": 600,
+    "retention_days": 30,
+    "pre_record_seconds": 5,
+    "post_record_seconds": 10,
+    "max_storage_gb": 100
+  },
+  "streaming": {
+    "enabled": true,
+    "mediamtx_url": "rtsp://localhost:8554/cam1",
+    "username": "admin",
+    "password": "ИЗМЕНИТЕ_ЭТОТ_ПАРОЛЬ"
+  },
+  "thermal": {
+    "check_interval": 10,
+    "temp_warning": 70,
+    "temp_throttle": 75,
+    "temp_critical": 80,
+    "throttle_reduce_fps": 10
+  },
+  "web_interface": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 5000,
+    "debug": false
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/surveillance.log",
+    "max_bytes": 10485760,
+    "backup_count": 5
+  }
+}

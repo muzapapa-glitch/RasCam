@@ -1,0 +1,54 @@
+RasCam - Полный список файлов проекта
+
+ОСНОВНЫЕ МОДУЛИ (Python):
+========================
+camera_manager.py       - Захват видео (picamera2, dual-stream, H.264)
+motion_detector.py      - Детекция движения (MSE, зоны)
+recorder.py             - Управление записями (ротация, cleanup)
+thermal_monitor.py      - Мониторинг температуры (vcgencmd)
+surveillance.py         - Главный координатор системы
+test_components.py      - Тестирование без камеры
+
+ВЕБ-ИНТЕРФЕЙС:
+==============
+web_interface/app.py              - Flask REST API
+web_interface/templates/index.html - Веб-интерфейс (HTML+CSS+JS)
+
+КОНФИГУРАЦИЯ:
+=============
+config.json             - Настройки системы (НЕ в git)
+config.example.json     - Пример конфигурации
+mediamtx.yml            - Конфигурация RTSP сервера
+requirements.txt        - Python зависимости
+
+СКРИПТЫ УСТАНОВКИ:
+==================
+install.sh              - Автоматическая установка (sudo)
+check_system.sh         - Проверка готовности системы
+
+ДОКУМЕНТАЦИЯ:
+=============
+README.md               - Полное руководство пользователя
+QUICKSTART.md           - Быстрый старт (5 минут)
+ARCHITECTURE.md         - Техническая архитектура
+PROJECT_SUMMARY.md      - Сводка проекта
+FILES.txt               - Этот файл
+
+СЛУЖЕБНЫЕ:
+==========
+.gitignore              - Исключения для git
+
+ДИРЕКТОРИИ:
+===========
+logs/                   - Логи системы
+recordings/             - Видеозаписи (или USB SSD)
+web_interface/static/   - CSS/JS для веб-интерфейса
+web_interface/templates/ - HTML шаблоны
+
+ИТОГО:
+======
+Python модули: 6
+Веб-интерфейс: 2 файла
+Документация: 5 файлов
+Скрипты: 3
+Конфигурация: 4 файла

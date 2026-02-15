@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Recordings
+recordings/
+*.mp4
+*.h264
+
+# Logs
+logs/
+*.log
+
+# Configuration (содержит пароли)
+config.json
+
+# Temporary files
+*.tmp
+*.swp
+*~
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# System
+Thumbs.db

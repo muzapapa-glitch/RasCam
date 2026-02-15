@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RasCam - Система видеонаблюдения</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #4CAF50;
+            font-size: 24px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card h2 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .stream-container {
+            background: #000;
+            border-radius: 4px;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stream-placeholder {
+            text-align: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stat-unit {
+            font-size: 14px;
+            color: #888;
+            margin-left: 4px;
+        }
+
+        .recordings-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .recording-item {
+            background: #1a1a1a;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .recording-info {
+            flex: 1;
+        }
+
+        .recording-filename {
+            color: #e0e0e0;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .recording-meta {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .recording-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button.danger {
+            background: #f44336;
+        }
+
+        button.danger:hover {
+            background: #da190b;
+        }
+
+        button.secondary {
+            background: #555;
+        }
+
+        button.secondary:hover {
+            background: #666;
+        }
+
+        .zones-list {
+            margin-top: 15px;
+        }
+
+        .zone-item {
+            background: #1a1a1a;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .zone-name {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .zone-coords {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .temp-chart {
+            height: 150px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin-top: 15px;
+            padding: 10px;
+            position: relative;
+        }
+
+        .loading {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+        }
+
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .rtsp-info {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .rtsp-url {
+            font-family: monospace;
+            background: #000;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>RasCam Surveillance System</h1>
+                <p style="color: #888; margin-top: 5px;">Raspberry Pi 4 + Camera Module 3</p>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Загрузка...</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Видеопоток</h2>
+                <div class="stream-container" id="streamContainer">
+                    <div class="stream-placeholder">
+                        <p>RTSP Stream недоступен в браузере</p>
+                        <p style="font-size: 12px; margin-top: 8px;">Используйте VLC или другой RTSP клиент</p>
+                    </div>
+                    <canvas id="zoneCanvas"></canvas>
+                </div>
+                <div class="rtsp-info">
+                    <strong>RTSP URL:</strong>
+                    <div class="rtsp-url" id="rtspUrl">rtsp://admin:changeme@192.168.1.xxx:8554/cam1</div>
+                    <p style="color: #888; font-size: 12px; margin-top: 8px;">
+                        Откройте этот URL в VLC (Media → Open Network Stream)
+                    </p>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2>Статистика</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Температура CPU</div>
+                            <div class="stat-value">
+                                <span id="tempValue">--</span>
+                                <span class="stat-unit">°C</span>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Статус записи</div>
+                            <div class="stat-value" style="font-size: 16px;" id="recStatus">Ожидание</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Записей всего</div>
+                            <div class="stat-value" id="recCount">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Использовано места</div>
+                            <div class="stat-value">
+                                <span id="storageUsage">0</span>
+                                <span class="stat-unit">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="temp-chart" id="tempChart">
+                        <canvas id="tempCanvas" width="100" height="130"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Зоны детекции движения</h2>
+                <p style="color: #888; font-size: 14px; margin-bottom: 10px;">
+                    Нарисуйте прямоугольник на видео для добавления зоны
+                </p>
+                <div class="zones-list" id="zonesList">
+                    <div class="loading">Загрузка зон...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Записи</h2>
+                <div class="recordings-list" id="recordingsList">
+                    <div class="loading">Загрузка записей...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Обновление статуса каждые 2 секунды
+        let updateInterval;
+        let tempHistory = [];
+
+        function updateStatus() {
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    // Статус системы
+                    const statusDot = document.getElementById('statusDot');
+                    const statusText = document.getElementById('statusText');
+
+                    if (data.running) {
+                        statusDot.style.background = '#4CAF50';
+                        statusText.textContent = 'Активно';
+                    } else {
+                        statusDot.style.background = '#f44336';
+                        statusText.textContent = 'Остановлено';
+                    }
+
+                    // Температура
+                    if (data.thermal) {
+                        document.getElementById('tempValue').textContent = data.thermal.current_temp;
+                        tempHistory.push(data.thermal.current_temp);
+                        if (tempHistory.length > 30) tempHistory.shift();
+                        drawTempChart();
+                    }
+
+                    // Запись
+                    if (data.recorder) {
+                        const recStatus = document.getElementById('recStatus');
+                        if (data.recorder.is_recording) {
+                            recStatus.textContent = 'Запись';
+                            recStatus.style.color = '#f44336';
+                        } else {
+                            recStatus.textContent = 'Ожидание';
+                            recStatus.style.color = '#4CAF50';
+                        }
+
+                        document.getElementById('recCount').textContent = data.recorder.total_recordings;
+
+                        if (data.recorder.storage) {
+                            document.getElementById('storageUsage').textContent =
+                                data.recorder.storage.usage_percent || 0;
+                        }
+                    }
+                })
+                .catch(err => console.error('Error fetching status:', err));
+        }
+
+        function updateRecordings() {
+            fetch('/api/recordings')
+                .then(res => res.json())
+                .then(recordings => {
+                    const list = document.getElementById('recordingsList');
+
+                    if (recordings.length === 0) {
+                        list.innerHTML = '<div class="loading">Записей пока нет</div>';
+                        return;
+                    }
+
+                    list.innerHTML = recordings.map(rec => `
+                        <div class="recording-item">
+                            <div class="recording-info">
+                                <div class="recording-filename">${rec.filename}</div>
+                                <div class="recording-meta">${rec.size_mb} MB · ${new Date(rec.created).toLocaleString('ru-RU')}</div>
+                            </div>
+                            <div class="recording-actions">
+                                <button class="secondary" onclick="playRecording('${rec.filename}')">▶</button>
+                                <button class="danger" onclick="deleteRecording('${rec.filename}')">🗑</button>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(err => console.error('Error fetching recordings:', err));
+        }
+
+        function updateZones() {
+            fetch('/api/zones')
+                .then(res => res.json())
+                .then(zones => {
+                    const list = document.getElementById('zonesList');
+
+                    if (zones.length === 0) {
+                        list.innerHTML = '<div class="loading">Зон нет</div>';
+                        return;
+                    }
+
+                    list.innerHTML = zones.map(zone => `
+                        <div class="zone-item">
+                            <div>
+                                <div class="zone-name">${zone.name}</div>
+                                <div class="zone-coords">(${zone.x}, ${zone.y}) ${zone.width}×${zone.height}</div>
+                            </div>
+                            <div class="recording-actions">
+                                <button class="secondary" onclick="toggleZone('${zone.name}', ${!zone.enabled})">
+                                    ${zone.enabled ? 'Выкл' : 'Вкл'}
+                                </button>
+                                <button class="danger" onclick="deleteZone('${zone.name}')">🗑</button>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    drawZones(zones);
+                })
+                .catch(err => console.error('Error fetching zones:', err));
+        }
+
+        function drawZones(zones) {
+            const canvas = document.getElementById('zoneCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            zones.forEach(zone => {
+                if (!zone.enabled) return;
+
+                // Масштабирование координат (320x240 -> canvas size)
+                const scaleX = canvas.width / 320;
+                const scaleY = canvas.height / 240;
+
+                ctx.strokeStyle = '#4CAF50';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    zone.x * scaleX,
+                    zone.y * scaleY,
+                    zone.width * scaleX,
+                    zone.height * scaleY
+                );
+
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.2)';
+                ctx.fillRect(
+                    zone.x * scaleX,
+                    zone.y * scaleY,
+                    zone.width * scaleX,
+                    zone.height * scaleY
+                );
+
+                ctx.fillStyle = '#4CAF50';
+                ctx.font = '12px sans-serif';
+                ctx.fillText(zone.name, zone.x * scaleX + 5, zone.y * scaleY + 15);
+            });
+        }
+
+        function drawTempChart() {
+            const canvas = document.getElementById('tempCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 130;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (tempHistory.length < 2) return;
+
+            const max = Math.max(...tempHistory, 80);
+            const min = Math.min(...tempHistory, 30);
+            const range = max - min;
+
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            tempHistory.forEach((temp, i) => {
+                const x = (i / (tempHistory.length - 1)) * canvas.width;
+                const y = canvas.height - ((temp - min) / range) * canvas.height;
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // Референсные линии
+            ctx.strokeStyle = '#f44336';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            const warningY = canvas.height - ((70 - min) / range) * canvas.height;
+            ctx.beginPath();
+            ctx.moveTo(0, warningY);
+            ctx.lineTo(canvas.width, warningY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function playRecording(filename) {
+            window.open(`/api/recording/${filename}`, '_blank');
+        }
+
+        function deleteRecording(filename) {
+            if (!confirm(`Удалить запись ${filename}?`)) return;
+
+            fetch(`/api/recording/${filename}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateRecordings();
+                    } else {
+                        alert('Ошибка удаления');
+                    }
+                });
+        }
+
+        function deleteZone(name) {
+            if (!confirm(`Удалить зону ${name}?`)) return;
+
+            fetch(`/api/zones/${name}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateZones();
+                    } else {
+                        alert('Ошибка удаления зоны');
+                    }
+                });
+        }
+
+        function toggleZone(name, enabled) {
+            fetch(`/api/zones/${name}/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateZones();
+                    }
+                });
+        }
+
+        // Инициализация
+        updateStatus();
+        updateRecordings();
+        updateZones();
+
+        updateInterval = setInterval(() => {
+            updateStatus();
+            updateRecordings();
+        }, 2000);
+
+        // Обновление зон каждые 10 секунд
+        setInterval(updateZones, 10000);
+    </script>
+</body>
+</html>
