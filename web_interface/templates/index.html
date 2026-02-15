@@ -263,11 +263,6 @@
 </head>
 <body>
     <div class="container">
-        <div class="status-indicator" style="background: #2a2a2a; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Загрузка...</span>
-        </div>
-
         <div class="grid">
             <div class="card">
                 <h2>Видеопоток</h2>
@@ -278,18 +273,26 @@
                     </div>
                     <canvas id="zoneCanvas"></canvas>
                 </div>
-                <div class="rtsp-info">
-                    <strong>RTSP URL:</strong>
-                    <div class="rtsp-url" id="rtspUrl">Загрузка...</div>
-                    <p style="color: #888; font-size: 12px; margin-top: 8px;">
-                        Откройте этот URL в VLC (Media → Open Network Stream)
+                <div style="margin-top: 15px;">
+                    <h2 style="font-size: 18px; color: #4CAF50; margin-bottom: 10px;">Зоны детекции движения</h2>
+                    <p style="color: #888; font-size: 14px; margin-bottom: 10px;">
+                        Нарисуйте прямоугольник на видео для добавления зоны
                     </p>
+                    <div class="zones-list" id="zonesList">
+                        <div class="loading">Загрузка зон...</div>
+                    </div>
                 </div>
             </div>
 
             <div>
                 <div class="card">
-                    <h2>Статистика</h2>
+                    <h2 style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Статистика</span>
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: normal;">
+                            <div class="status-dot" id="statusDot"></div>
+                            <span id="statusText">Загрузка...</span>
+                        </div>
+                    </h2>
                     <div class="stats-grid">
                         <div class="stat-item">
                             <div class="stat-label">Температура CPU</div>
@@ -323,12 +326,13 @@
 
         <div class="grid">
             <div class="card">
-                <h2>Зоны детекции движения</h2>
-                <p style="color: #888; font-size: 14px; margin-bottom: 10px;">
-                    Нарисуйте прямоугольник на видео для добавления зоны
-                </p>
-                <div class="zones-list" id="zonesList">
-                    <div class="loading">Загрузка зон...</div>
+                <h2>RTSP URL</h2>
+                <div class="rtsp-info" style="margin-top: 0;">
+                    <strong>Подключение:</strong>
+                    <div class="rtsp-url" id="rtspUrl">Загрузка...</div>
+                    <p style="color: #888; font-size: 12px; margin-top: 8px;">
+                        Откройте этот URL в VLC (Media → Open Network Stream)
+                    </p>
                 </div>
             </div>
 

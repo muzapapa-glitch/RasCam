@@ -51,8 +51,8 @@ class RecordingManager:
 
     def generate_filename(self, event_type: str = "motion") -> str:
         """Генерация имени файла с timestamp"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{event_type}_cam1.mp4"
+        timestamp = datetime.now().strftime("%m.%d_%H.%M")
+        filename = f"{timestamp}.mp4"
         full_path = self.storage_path / filename
         return str(full_path)
 
