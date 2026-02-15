@@ -222,10 +222,32 @@ def api_get_rtsp():
     try:
         streaming_config = surveillance_system.config.get('streaming', {})
 
-        # Получить IP адрес системы
+        # Получить IP адрес системы (реальный сетевой IP, не localhost)
         import socket
-        hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
+        local_ip = '0.0.0.0'
+
+        try:
+            # Создаём UDP соединение (не отправляем данные) чтобы узнать наш IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            # Fallback: пробуем получить IP через hostname
+            try:
+                local_ip = socket.gethostbyname(socket.gethostname())
+                # Если получили localhost, пробуем найти другой интерфейс
+                if local_ip.startswith('127.'):
+                    # Получаем все IP адреса
+                    hostname = socket.gethostname()
+                    addrs = socket.getaddrinfo(hostname, None)
+                    for addr in addrs:
+                        ip = addr[4][0]
+                        if not ip.startswith('127.') and ':' not in ip:  # IPv4, не localhost
+                            local_ip = ip
+                            break
+            except Exception:
+                local_ip = '0.0.0.0'
 
         # Сформировать RTSP URL
         username = streaming_config.get('username', 'admin')

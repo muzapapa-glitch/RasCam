@@ -303,7 +303,7 @@
                             <div class="stat-value" style="font-size: 16px;" id="recStatus">Ожидание</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">Записей всего</div>
+                            <div class="stat-label">Файлов на диске</div>
                             <div class="stat-value" id="recCount">0</div>
                         </div>
                         <div class="stat-item">
@@ -381,7 +381,12 @@
                             recStatus.style.color = '#4CAF50';
                         }
 
-                        document.getElementById('recCount').textContent = data.recorder.total_recordings;
+                        // Показываем реальное количество файлов на диске
+                        if (data.recorder.storage && data.recorder.storage.recordings_count !== undefined) {
+                            document.getElementById('recCount').textContent = data.recorder.storage.recordings_count;
+                        } else {
+                            document.getElementById('recCount').textContent = data.recorder.total_recordings;
+                        }
 
                         if (data.recorder.storage) {
                             document.getElementById('storageUsage').textContent =
