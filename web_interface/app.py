@@ -213,6 +213,57 @@ def api_get_config():
     return jsonify(config_copy)
 
 
+@app.route('/api/rtsp')
+def api_get_rtsp():
+    """API: получить RTSP URL для подключения"""
+    if surveillance_system is None:
+        return jsonify({'error': 'System not initialized'}), 500
+
+    try:
+        streaming_config = surveillance_system.config.get('streaming', {})
+
+        # Получить IP адрес системы
+        import socket
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+
+        # Сформировать RTSP URL
+        username = streaming_config.get('username', 'admin')
+        password = streaming_config.get('password', 'changeme')
+        base_url = streaming_config.get('mediamtx_url', 'rtsp://localhost:8554/cam1')
+
+        # Извлечь порт и путь из base_url
+        if '://' in base_url:
+            protocol, rest = base_url.split('://', 1)
+            if '/' in rest:
+                host_port, path = rest.split('/', 1)
+                if ':' in host_port:
+                    _, port = host_port.split(':', 1)
+                else:
+                    port = '8554'
+                path = '/' + path
+            else:
+                port = '8554'
+                path = '/cam1'
+        else:
+            port = '8554'
+            path = '/cam1'
+
+        # Сформировать полный URL с IP
+        rtsp_url = f"rtsp://{username}:{password}@{local_ip}:{port}{path}"
+
+        return jsonify({
+            'rtsp_url': rtsp_url,
+            'ip': local_ip,
+            'port': port,
+            'path': path,
+            'username': username
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 def _save_zones_to_config():
     """Сохранить зоны в конфигурацию"""
     if surveillance_system is None:

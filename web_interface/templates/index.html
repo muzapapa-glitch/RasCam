@@ -263,16 +263,10 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <div>
-                <h1>RasCam Surveillance System</h1>
-                <p style="color: #888; margin-top: 5px;">Raspberry Pi 4 + Camera Module 3</p>
-            </div>
-            <div class="status-indicator">
-                <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">Загрузка...</span>
-            </div>
-        </header>
+        <div class="status-indicator" style="background: #2a2a2a; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Загрузка...</span>
+        </div>
 
         <div class="grid">
             <div class="card">
@@ -286,7 +280,7 @@
                 </div>
                 <div class="rtsp-info">
                     <strong>RTSP URL:</strong>
-                    <div class="rtsp-url" id="rtspUrl">rtsp://admin:changeme@192.168.1.xxx:8554/cam1</div>
+                    <div class="rtsp-url" id="rtspUrl">Загрузка...</div>
                     <p style="color: #888; font-size: 12px; margin-top: 8px;">
                         Откройте этот URL в VLC (Media → Open Network Stream)
                     </p>
@@ -396,6 +390,20 @@
                     }
                 })
                 .catch(err => console.error('Error fetching status:', err));
+        }
+
+        function updateRtspUrl() {
+            fetch('/api/rtsp')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.rtsp_url) {
+                        document.getElementById('rtspUrl').textContent = data.rtsp_url;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error fetching RTSP URL:', err);
+                    document.getElementById('rtspUrl').textContent = 'Ошибка загрузки URL';
+                });
         }
 
         function updateRecordings() {
@@ -589,6 +597,7 @@
         updateStatus();
         updateRecordings();
         updateZones();
+        updateRtspUrl();
 
         updateInterval = setInterval(() => {
             updateStatus();
