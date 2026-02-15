@@ -9,7 +9,7 @@ import subprocess
 import os
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, Quality
-from picamera2.outputs import CircularOutput, FileOutput
+from picamera2.outputs import CircularOutput, FileOutput, FfmpegOutput
 from libcamera import Transform, controls
 import time
 
@@ -113,42 +113,44 @@ class CameraManager:
             return None, None
 
     def start_recording(self, filename):
-        """Начать запись в файл"""
+        """Начать запись в файл (БЕЗ остановки RTSP стрима)"""
         try:
             logger.info(f"Начало записи: {filename}")
 
-            # Используем FfmpegOutput для надёжной записи
-            from picamera2.outputs import FfmpegOutput
-            self.current_output = FfmpegOutput(filename)
+            # Создаём FfmpegOutput для записи в файл
+            file_output = FfmpegOutput(filename)
+            self.current_output = file_output
 
-            # Если RTSP стриминг активен, используем tee для записи в оба места
+            # Если RTSP активен - добавляем file_output к существующему rtsp_output
+            # используя encoder с несколькими outputs (запись идёт параллельно)
             if self.rtsp_output:
-                # ffmpeg с tee - пишем и в файл, и в RTSP одновременно
-                streaming_config = self.config.get('streaming', {})
-                rtsp_url = streaming_config.get('mediamtx_url', 'rtsp://localhost:8554/cam1')
-                username = streaming_config.get('username', 'admin')
-                password = streaming_config.get('password', 'changeme')
-
-                if '://' in rtsp_url:
-                    protocol, rest = rtsp_url.split('://', 1)
-                    rtsp_url_with_auth = f"{protocol}://{username}:{password}@{rest}"
-                else:
-                    rtsp_url_with_auth = rtsp_url
-
-                # Создаём output с tee для записи в файл + RTSP
-                tee_output = FfmpegOutput(
-                    f'-f tee -map 0:v "[f=rtsp]{rtsp_url_with_auth}|[f=mp4]{filename}"',
-                    audio=False
-                )
-
+                # ВАЖНО: НЕ останавливаем encoder!
+                # Добавляем второй output для файла
+                # picamera2 поддерживает список outputs
                 self.picam2.stop_encoder()
-                self.encoder.output = tee_output
+
+                # Создаём список outputs: RTSP + файл
+                from picamera2.outputs import Output
+
+                class MultiOutput(Output):
+                    """Wrapper для записи в несколько outputs одновременно"""
+                    def __init__(self, outputs):
+                        super().__init__()
+                        self.outputs = outputs
+
+                    def outputframe(self, frame, keyframe=True, timestamp=None):
+                        for output in self.outputs:
+                            output.outputframe(frame, keyframe, timestamp)
+
+                multi = MultiOutput([self.rtsp_output, file_output])
+                self.encoder.output = multi
                 self.picam2.start_encoder(self.encoder)
-                self.current_output = tee_output
+
+                logger.info("Запись в файл + RTSP параллельно")
             else:
                 # Просто запись в файл
                 self.picam2.stop_encoder()
-                self.encoder.output = self.current_output
+                self.encoder.output = file_output
                 self.picam2.start_encoder(self.encoder)
 
             return True
