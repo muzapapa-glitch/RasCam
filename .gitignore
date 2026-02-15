@@ -20,9 +20,6 @@ recordings/
 logs/
 *.log
 
-# Configuration (содержит пароли)
-config.json
-
 # Temporary files
 *.tmp
 *.swp
