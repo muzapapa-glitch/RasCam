@@ -107,8 +107,10 @@ class CameraManager:
             from picamera2.outputs import FfmpegOutput
             self.current_output = FfmpegOutput(filename)
 
-            # Переключаем энкодер на запись в файл
+            # Остановить энкодер, сменить output, запустить снова
+            self.picam2.stop_encoder()
             self.encoder.output = self.current_output
+            self.picam2.start_encoder(self.encoder)
 
             return True
 
@@ -122,12 +124,12 @@ class CameraManager:
             if self.current_output:
                 logger.info("Остановка записи")
 
-                # Остановить и закрыть FfmpegOutput
-                self.current_output.stop()
+                # Остановить энкодер, сменить output обратно, запустить снова
+                self.picam2.stop_encoder()
                 self.current_output = None
-
-                # Вернуть энкодер обратно на CircularOutput
                 self.encoder.output = self.circular_output
+                self.picam2.start_encoder(self.encoder)
+
                 return True
             return False
 
