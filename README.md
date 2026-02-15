@@ -46,6 +46,10 @@ cd RasCam
 # Запустить скрипт установки
 sudo ./install.sh
 
+# Если появляется ошибка "externally-managed-environment":
+# git pull origin main  # Обновить до последней версии
+# sudo ./install.sh      # Или используйте ./install_venv.sh
+
 # Настроить конфигурацию
 nano config.json
 
