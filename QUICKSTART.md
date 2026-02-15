@@ -17,7 +17,7 @@ sudo apt install git -y
 ```bash
 # Клонировать репозиторий
 cd ~
-git clone https://github.com/yourusername/RasCam.git
+git clone https://github.com/muzapapa-glitch/RasCam.git
 cd RasCam
 
 # Запустить установку

@@ -40,7 +40,7 @@
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/yourusername/RasCam.git
+git clone https://github.com/muzapapa-glitch/RasCam.git
 cd RasCam
 
 # Запустить скрипт установки

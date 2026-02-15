@@ -176,7 +176,7 @@ RasCam/
 ### Быстрый старт (5 минут)
 
 ```bash
-git clone https://github.com/yourusername/RasCam.git
+git clone https://github.com/muzapapa-glitch/RasCam.git
 cd RasCam
 sudo ./install.sh
 cp config.example.json config.json
