@@ -206,9 +206,9 @@ class CameraManager:
 
             logger.info(f"Запуск RTSP стриминга в MediaMTX: {rtsp_url}")
 
-            # Создаём FfmpegOutput для стриминга
+            # Создаём FfmpegOutput для стриминга с явным указанием формата
             self.rtsp_output = FfmpegOutput(
-                rtsp_url_with_auth,
+                f"-f rtsp {rtsp_url_with_auth}",
                 audio=False
             )
 
