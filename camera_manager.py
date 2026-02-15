@@ -213,8 +213,8 @@ class CameraManager:
             # и пушить в MediaMTX через RTSP
             ffmpeg_cmd = [
                 'ffmpeg',
-                '-re',  # Читать в реальном времени
                 '-f', 'h264',  # Входной формат
+                '-use_wallclock_as_timestamps', '1',  # Использовать системное время
                 '-i', 'pipe:0',  # Читать из stdin
                 '-c:v', 'copy',  # Не перекодировать
                 '-f', 'rtsp',  # Выходной формат
@@ -223,11 +223,14 @@ class CameraManager:
             ]
 
             try:
+                # Временно логируем stderr для отладки
+                stderr_log = open('/tmp/ffmpeg_rtsp.log', 'w')
+
                 self.ffmpeg_process = subprocess.Popen(
                     ffmpeg_cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stderr=stderr_log
                 )
 
                 # Создаём FileOutput который пишет в stdin ffmpeg
