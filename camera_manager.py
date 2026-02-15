@@ -211,6 +211,7 @@ class CameraManager:
 
             # Запускаем отдельный процесс ffmpeg который будет читать из stdin
             # и пушить в MediaMTX через RTSP
+            # Временно без авторизации для отладки
             ffmpeg_cmd = [
                 'ffmpeg',
                 '-f', 'h264',  # Входной формат
@@ -219,7 +220,7 @@ class CameraManager:
                 '-c:v', 'copy',  # Не перекодировать
                 '-f', 'rtsp',  # Выходной формат
                 '-rtsp_transport', 'tcp',  # Использовать TCP
-                rtsp_url_with_auth
+                rtsp_url  # Без credentials для теста
             ]
 
             try:

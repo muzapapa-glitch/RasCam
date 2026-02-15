@@ -16,8 +16,9 @@ paths:
     source: publisher
 
     # Аутентификация для публикации (от RasCam)
-    publishUser: admin
-    publishPass: changeme  # ИЗМЕНИТЕ!
+    # Временно отключено для отладки
+    # publishUser: admin
+    # publishPass: changeme
 
     # Аутентификация для просмотра (используем тот же логин/пароль)
     readUser: admin
