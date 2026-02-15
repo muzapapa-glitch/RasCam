@@ -99,16 +99,16 @@ class CameraManager:
             return None, None
 
     def start_recording(self, filename):
-        """Начать запись в файл (с предзаписью из циркулярного буфера)"""
+        """Начать запись в файл"""
         try:
             logger.info(f"Начало записи: {filename}")
-            # Открыть файл для записи (бинарный режим)
-            self.current_file = open(filename, 'wb')
-            self.current_output = FileOutput(self.current_file)
 
-            # Сохранение циркулярного буфера + продолжение записи
-            self.circular_output.fileoutput = self.current_output
-            self.circular_output.start()
+            # Используем FfmpegOutput для надёжной записи
+            from picamera2.outputs import FfmpegOutput
+            self.current_output = FfmpegOutput(filename)
+
+            # Переключаем энкодер на запись в файл
+            self.encoder.output = self.current_output
 
             return True
 
@@ -121,16 +121,12 @@ class CameraManager:
         try:
             if self.current_output:
                 logger.info("Остановка записи")
-                self.circular_output.stop()
-                self.current_output.close()
+
+                # Остановить и закрыть FfmpegOutput
+                self.current_output.stop()
                 self.current_output = None
 
-                # Закрыть файловый объект
-                if hasattr(self, 'current_file') and self.current_file:
-                    self.current_file.close()
-                    self.current_file = None
-
-                # Восстановить циркулярный буфер
+                # Вернуть энкодер обратно на CircularOutput
                 self.encoder.output = self.circular_output
                 return True
             return False
