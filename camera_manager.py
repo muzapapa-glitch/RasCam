@@ -94,9 +94,10 @@ class CameraManager:
 
             logger.info("Камера запущена, захват видео активен")
 
-            # Запуск RTSP стриминга (если включен)
-            if self.config.get('streaming', {}).get('enabled', False):
-                self.start_streaming()
+            # RTSP стриминг временно отключен
+            # TODO: Реализовать стабильный RTSP через два отдельных encoder
+            # if self.config.get('streaming', {}).get('enabled', False):
+            #     self.start_streaming()
 
         except Exception as e:
             logger.error(f"Ошибка запуска камеры: {e}")
@@ -137,7 +138,7 @@ class CameraManager:
             return False
 
     def stop_recording(self):
-        """Остановить текущую запись и восстановить RTSP"""
+        """Остановить текущую запись"""
         try:
             if self.current_output:
                 logger.info("Остановка записи")
@@ -146,15 +147,9 @@ class CameraManager:
                 self.picam2.stop_encoder()
                 self.current_output = None
 
-                # Вернуться к RTSP стримингу если был активен
-                if self.config.get('streaming', {}).get('enabled', False):
-                    # Перезапустить RTSP стриминг (ffmpeg мог упасть)
-                    logger.info("Перезапуск RTSP стриминга после записи")
-                    self._restart_rtsp_streaming()
-                else:
-                    # Или к circular buffer если RTSP не был активен
-                    self.encoder.output = self.circular_output
-                    self.picam2.start_encoder(self.encoder)
+                # Вернуться к circular buffer
+                self.encoder.output = self.circular_output
+                self.picam2.start_encoder(self.encoder)
 
                 return True
             return False
@@ -162,28 +157,6 @@ class CameraManager:
         except Exception as e:
             logger.error(f"Ошибка остановки записи: {e}")
             return False
-
-    def _restart_rtsp_streaming(self):
-        """Перезапуск RTSP стриминга (убить старый ffmpeg и запустить новый)"""
-        try:
-            # Убить старый ffmpeg если есть
-            if self.ffmpeg_process:
-                try:
-                    self.ffmpeg_process.terminate()
-                    self.ffmpeg_process.wait(timeout=2)
-                except:
-                    try:
-                        self.ffmpeg_process.kill()
-                    except:
-                        pass
-                self.ffmpeg_process = None
-                self.rtsp_output = None
-
-            # Запустить новый
-            self.start_streaming()
-
-        except Exception as e:
-            logger.error(f"Ошибка перезапуска RTSP: {e}")
 
     def is_recording(self):
         """Проверка, идёт ли сейчас запись"""
