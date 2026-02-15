@@ -5,6 +5,8 @@ Camera Manager для Raspberry Pi Camera Module 3
 """
 
 import logging
+import subprocess
+import os
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, Quality
 from picamera2.outputs import CircularOutput, FileOutput
@@ -23,6 +25,7 @@ class CameraManager:
         self.current_output = None
         self.current_file = None
         self.rtsp_output = None
+        self.ffmpeg_process = None
 
     def initialize(self):
         """Инициализация камеры с dual-stream конфигурацией"""
@@ -206,11 +209,35 @@ class CameraManager:
 
             logger.info(f"Запуск RTSP стриминга в MediaMTX: {rtsp_url}")
 
-            # Создаём FfmpegOutput для стриминга с явным указанием формата
-            self.rtsp_output = FfmpegOutput(
-                f"-f rtsp {rtsp_url_with_auth}",
-                audio=False
-            )
+            # Запускаем отдельный процесс ffmpeg который будет читать из stdin
+            # и пушить в MediaMTX через RTSP
+            ffmpeg_cmd = [
+                'ffmpeg',
+                '-re',  # Читать в реальном времени
+                '-f', 'h264',  # Входной формат
+                '-i', 'pipe:0',  # Читать из stdin
+                '-c:v', 'copy',  # Не перекодировать
+                '-f', 'rtsp',  # Выходной формат
+                '-rtsp_transport', 'tcp',  # Использовать TCP
+                rtsp_url_with_auth
+            ]
+
+            try:
+                self.ffmpeg_process = subprocess.Popen(
+                    ffmpeg_cmd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+                # Создаём FileOutput который пишет в stdin ffmpeg
+                from picamera2.outputs import FileOutput
+                self.rtsp_output = FileOutput(self.ffmpeg_process.stdin)
+
+                logger.info(f"FFmpeg процесс запущен (PID: {self.ffmpeg_process.pid})")
+            except Exception as e:
+                logger.error(f"Ошибка запуска ffmpeg: {e}")
+                return False
 
             # Переключаем encoder на RTSP output
             self.picam2.stop_encoder()
@@ -260,6 +287,20 @@ class CameraManager:
             if self.rtsp_output:
                 logger.info("Остановка RTSP стриминга")
                 self.rtsp_output = None
+
+            if self.ffmpeg_process:
+                logger.info("Остановка ffmpeg процесса")
+                try:
+                    self.ffmpeg_process.stdin.close()
+                    self.ffmpeg_process.terminate()
+                    self.ffmpeg_process.wait(timeout=5)
+                except Exception as e:
+                    logger.warning(f"Ошибка при остановке ffmpeg: {e}")
+                    try:
+                        self.ffmpeg_process.kill()
+                    except:
+                        pass
+                self.ffmpeg_process = None
 
             if self.picam2:
                 self.picam2.stop()
