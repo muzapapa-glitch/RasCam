@@ -21,6 +21,7 @@ class CameraManager:
         self.encoder = None
         self.circular_output = None
         self.current_output = None
+        self.current_file = None
 
     def initialize(self):
         """Инициализация камеры с dual-stream конфигурацией"""
@@ -101,7 +102,9 @@ class CameraManager:
         """Начать запись в файл (с предзаписью из циркулярного буфера)"""
         try:
             logger.info(f"Начало записи: {filename}")
-            self.current_output = FileOutput(filename)
+            # Открыть файл для записи (бинарный режим)
+            self.current_file = open(filename, 'wb')
+            self.current_output = FileOutput(self.current_file)
 
             # Сохранение циркулярного буфера + продолжение записи
             self.circular_output.fileoutput = self.current_output
@@ -121,6 +124,11 @@ class CameraManager:
                 self.circular_output.stop()
                 self.current_output.close()
                 self.current_output = None
+
+                # Закрыть файловый объект
+                if hasattr(self, 'current_file') and self.current_file:
+                    self.current_file.close()
+                    self.current_file = None
 
                 # Восстановить циркулярный буфер
                 self.encoder.output = self.circular_output
