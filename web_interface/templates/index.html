@@ -259,6 +259,52 @@
             margin-top: 8px;
             word-break: break-all;
         }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #555;
+            border-radius: 24px;
+            transition: .4s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: .4s;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #4CAF50;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
@@ -319,6 +365,20 @@
                     </div>
                     <div class="temp-chart" id="tempChart">
                         <canvas id="tempCanvas" width="100" height="130"></canvas>
+                    </div>
+
+                    <!-- Переключатель непрерывной записи -->
+                    <div style="margin-top: 15px; padding: 15px; background: #1a1a1a; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #4CAF50;">Непрерывная запись</strong>
+                                <p style="color: #888; font-size: 12px; margin-top: 4px;">24/7 запись вместо детекции движения</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="continuousRecToggle" onchange="toggleContinuousRecording()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -395,6 +455,11 @@
                         if (data.recorder.storage) {
                             document.getElementById('storageUsage').textContent =
                                 data.recorder.storage.usage_percent || 0;
+                        }
+
+                        // Обновить состояние переключателя непрерывной записи
+                        if (data.recorder.continuous_recording !== undefined) {
+                            document.getElementById('continuousRecToggle').checked = data.recorder.continuous_recording;
                         }
                     }
                 })
@@ -599,6 +664,33 @@
                     if (data.success) {
                         updateZones();
                     }
+                });
+        }
+
+        function toggleContinuousRecording() {
+            const enabled = document.getElementById('continuousRecToggle').checked;
+
+            fetch('/api/recording/continuous', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log(`Непрерывная запись: ${enabled ? 'включена' : 'выключена'}`);
+                        updateStatus();
+                    } else {
+                        alert('Ошибка изменения режима записи');
+                        // Вернуть переключатель обратно
+                        document.getElementById('continuousRecToggle').checked = !enabled;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error toggling continuous recording:', err);
+                    alert('Ошибка связи с сервером');
+                    // Вернуть переключатель обратно
+                    document.getElementById('continuousRecToggle').checked = !enabled;
                 });
         }
 

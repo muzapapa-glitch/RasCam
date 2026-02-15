@@ -213,6 +213,33 @@ def api_get_config():
     return jsonify(config_copy)
 
 
+@app.route('/api/recording/continuous', methods=['POST'])
+def api_toggle_continuous_recording():
+    """API: переключить режим непрерывной записи"""
+    if surveillance_system is None or surveillance_system.recorder is None:
+        return jsonify({'error': 'Recorder not initialized'}), 500
+
+    try:
+        data = request.json
+        enabled = data.get('enabled', False)
+
+        # Изменить режим записи
+        surveillance_system.recorder.continuous_recording = enabled
+
+        # Сохранить в конфигурацию
+        surveillance_system.config['recording']['continuous_recording'] = enabled
+        with open('config.json', 'w') as f:
+            json.dump(surveillance_system.config, f, indent=2)
+
+        logger.info(f"Непрерывная запись: {'включена' if enabled else 'выключена'}")
+
+        return jsonify({'success': True, 'continuous_recording': enabled})
+
+    except Exception as e:
+        logger.error(f"Ошибка переключения непрерывной записи: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/rtsp')
 def api_get_rtsp():
     """API: получить RTSP URL для подключения"""

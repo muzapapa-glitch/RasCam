@@ -237,5 +237,6 @@ class RecordingManager:
             'current_filename': Path(self.current_filename).name if self.current_filename else None,
             'total_recordings': self.stats['total_recordings'],
             'storage': storage_info,
-            'last_cleanup': self.stats['last_cleanup']
+            'last_cleanup': self.stats['last_cleanup'],
+            'continuous_recording': self.continuous_recording
         }
