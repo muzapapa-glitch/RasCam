@@ -380,6 +380,52 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- Управление чувствительностью детектора движения -->
+                    <div style="margin-top: 15px; padding: 15px; background: #1a1a1a; border-radius: 4px;">
+                        <strong style="color: #4CAF50;">Чувствительность детектора</strong>
+                        <p style="color: #888; font-size: 12px; margin-top: 4px; margin-bottom: 12px;">
+                            Текущий порог: <span id="currentThreshold">--</span> (<span id="currentSensitivity">--</span>)
+                        </p>
+
+                        <!-- Предустановленные уровни -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px;">
+                            <button class="secondary" onclick="setSensitivity('low')">Низкая</button>
+                            <button class="secondary" onclick="setSensitivity('medium')">Средняя</button>
+                            <button class="secondary" onclick="setSensitivity('high')">Высокая</button>
+                            <button class="secondary" onclick="setSensitivity('very_high')">Макс.</button>
+                        </div>
+
+                        <!-- Точная настройка -->
+                        <div style="margin-top: 10px;">
+                            <label style="color: #888; font-size: 12px; display: block; margin-bottom: 5px;">
+                                Точная настройка (0-50):
+                            </label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input
+                                    type="range"
+                                    id="thresholdSlider"
+                                    min="0"
+                                    max="50"
+                                    step="0.5"
+                                    value="7"
+                                    style="flex: 1; cursor: pointer;"
+                                    oninput="updateThresholdDisplay()"
+                                >
+                                <input
+                                    type="number"
+                                    id="thresholdInput"
+                                    min="0"
+                                    max="50"
+                                    step="0.5"
+                                    value="7"
+                                    style="width: 60px; padding: 4px 8px; background: #000; color: #e0e0e0; border: 1px solid #555; border-radius: 4px;"
+                                    oninput="updateThresholdSlider()"
+                                >
+                                <button onclick="applyCustomThreshold()" style="padding: 4px 12px;">OK</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -694,11 +740,96 @@
                 });
         }
 
+        // Функции управления чувствительностью
+        function updateSensitivityDisplay() {
+            fetch('/api/motion/sensitivity')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.threshold !== undefined) {
+                        document.getElementById('currentThreshold').textContent = data.threshold.toFixed(1);
+                        document.getElementById('currentSensitivity').textContent = getSensitivityLabel(data.sensitivity);
+                        document.getElementById('thresholdSlider').value = data.threshold;
+                        document.getElementById('thresholdInput').value = data.threshold;
+                    }
+                })
+                .catch(err => console.error('Error fetching sensitivity:', err));
+        }
+
+        function getSensitivityLabel(level) {
+            const labels = {
+                'low': 'низкая',
+                'medium': 'средняя',
+                'high': 'высокая',
+                'very_high': 'максимальная'
+            };
+            return labels[level] || level;
+        }
+
+        function setSensitivity(level) {
+            fetch('/api/motion/sensitivity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sensitivity: level })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateSensitivityDisplay();
+                        console.log(`Чувствительность установлена: ${level}`);
+                    } else {
+                        alert('Ошибка установки чувствительности');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error setting sensitivity:', err);
+                    alert('Ошибка связи с сервером');
+                });
+        }
+
+        function updateThresholdDisplay() {
+            const value = document.getElementById('thresholdSlider').value;
+            document.getElementById('thresholdInput').value = value;
+        }
+
+        function updateThresholdSlider() {
+            const value = document.getElementById('thresholdInput').value;
+            document.getElementById('thresholdSlider').value = value;
+        }
+
+        function applyCustomThreshold() {
+            const threshold = parseFloat(document.getElementById('thresholdInput').value);
+
+            if (isNaN(threshold) || threshold < 0 || threshold > 50) {
+                alert('Порог должен быть от 0 до 50');
+                return;
+            }
+
+            fetch('/api/motion/threshold', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ threshold })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateSensitivityDisplay();
+                        console.log(`Порог установлен: ${threshold}`);
+                    } else {
+                        alert('Ошибка установки порога');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error setting threshold:', err);
+                    alert('Ошибка связи с сервером');
+                });
+        }
+
         // Инициализация
         updateStatus();
         updateRecordings();
         updateZones();
         updateRtspUrl();
+        updateSensitivityDisplay();
 
         updateInterval = setInterval(() => {
             updateStatus();
@@ -707,6 +838,9 @@
 
         // Обновление зон каждые 10 секунд
         setInterval(updateZones, 10000);
+
+        // Обновление чувствительности каждые 5 секунд
+        setInterval(updateSensitivityDisplay, 5000);
     </script>
 </body>
 </html>

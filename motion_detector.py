@@ -151,6 +151,7 @@ class MotionDetector:
             'motion_frames': self.motion_frame_count,
             'no_motion_frames': self.no_motion_frame_count,
             'threshold': self.threshold,
+            'sensitivity': self.get_sensitivity_level(),
             'zones_count': len(self.zones),
             'zones_enabled': sum(1 for z in self.zones if z.enabled)
         }
@@ -160,6 +161,45 @@ class MotionDetector:
         old_threshold = self.threshold
         self.threshold = new_threshold
         logger.info(f"Порог изменён: {old_threshold} -> {new_threshold}")
+
+    def set_sensitivity(self, sensitivity: str):
+        """
+        Установить чувствительность по предустановленному уровню
+
+        Args:
+            sensitivity: 'low', 'medium', 'high', 'very_high'
+        """
+        sensitivity_map = {
+            'low': 15.0,        # Только крупные объекты
+            'medium': 7.0,      # Баланс между точностью и ложными срабатываниями
+            'high': 4.0,        # Чувствительный к мелким движениям
+            'very_high': 2.0    # Максимальная чувствительность
+        }
+
+        if sensitivity not in sensitivity_map:
+            logger.error(f"Неизвестный уровень чувствительности: {sensitivity}")
+            return False
+
+        new_threshold = sensitivity_map[sensitivity]
+        self.update_threshold(new_threshold)
+        logger.info(f"Установлена чувствительность '{sensitivity}' (порог={new_threshold})")
+        return True
+
+    def get_sensitivity_level(self) -> str:
+        """
+        Получить текущий уровень чувствительности
+
+        Returns:
+            Строковое представление уровня чувствительности
+        """
+        if self.threshold >= 15.0:
+            return 'low'
+        elif self.threshold >= 7.0:
+            return 'medium'
+        elif self.threshold >= 4.0:
+            return 'high'
+        else:
+            return 'very_high'
 
     def enable_zone(self, zone_name: str, enabled: bool = True):
         """Включить/выключить зону детекции"""

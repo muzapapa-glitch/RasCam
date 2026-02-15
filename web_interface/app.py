@@ -4,6 +4,7 @@ Flask веб-интерфейс для RasCam
 """
 
 import json
+import logging
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -17,6 +18,9 @@ app.config['SECRET_KEY'] = 'rascam-secret-key-change-in-production'
 
 # Глобальная ссылка на систему (будет установлена при запуске)
 surveillance_system = None
+
+# Logger
+logger = logging.getLogger(__name__)
 
 
 def set_surveillance_system(system):
@@ -199,6 +203,87 @@ def api_toggle_zone(zone_name):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/motion/sensitivity', methods=['GET'])
+def api_get_sensitivity():
+    """API: получить текущую чувствительность"""
+    if surveillance_system is None or surveillance_system.motion_detector is None:
+        return jsonify({'error': 'Motion detector not initialized'}), 500
+
+    try:
+        return jsonify({
+            'sensitivity': surveillance_system.motion_detector.get_sensitivity_level(),
+            'threshold': surveillance_system.motion_detector.threshold
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/motion/sensitivity', methods=['POST'])
+def api_set_sensitivity():
+    """API: установить чувствительность"""
+    if surveillance_system is None or surveillance_system.motion_detector is None:
+        return jsonify({'error': 'Motion detector not initialized'}), 500
+
+    try:
+        data = request.json
+        sensitivity = data.get('sensitivity')
+        threshold = data.get('threshold')
+
+        if sensitivity:
+            # Установить предустановленный уровень
+            success = surveillance_system.motion_detector.set_sensitivity(sensitivity)
+            if not success:
+                return jsonify({'error': 'Invalid sensitivity level'}), 400
+        elif threshold is not None:
+            # Установить точное значение порога
+            surveillance_system.motion_detector.update_threshold(float(threshold))
+        else:
+            return jsonify({'error': 'No sensitivity or threshold provided'}), 400
+
+        # Сохранить в конфигурацию
+        _save_motion_config()
+
+        return jsonify({
+            'success': True,
+            'sensitivity': surveillance_system.motion_detector.get_sensitivity_level(),
+            'threshold': surveillance_system.motion_detector.threshold
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/motion/threshold', methods=['POST'])
+def api_set_threshold():
+    """API: установить точный порог чувствительности"""
+    if surveillance_system is None or surveillance_system.motion_detector is None:
+        return jsonify({'error': 'Motion detector not initialized'}), 500
+
+    try:
+        data = request.json
+        threshold = data.get('threshold')
+
+        if threshold is None:
+            return jsonify({'error': 'Threshold value required'}), 400
+
+        threshold = float(threshold)
+        if threshold < 0 or threshold > 50:
+            return jsonify({'error': 'Threshold must be between 0 and 50'}), 400
+
+        surveillance_system.motion_detector.update_threshold(threshold)
+        _save_motion_config()
+
+        return jsonify({
+            'success': True,
+            'threshold': threshold,
+            'sensitivity': surveillance_system.motion_detector.get_sensitivity_level()
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/config')
 def api_get_config():
     """API: получить текущую конфигурацию"""
@@ -331,6 +416,18 @@ def _save_zones_to_config():
     ]
 
     surveillance_system.config['motion_detection']['zones'] = zones_data
+
+    # Сохранить в файл
+    with open('config.json', 'w') as f:
+        json.dump(surveillance_system.config, f, indent=2)
+
+
+def _save_motion_config():
+    """Сохранить настройки детекции движения в конфигурацию"""
+    if surveillance_system is None or surveillance_system.motion_detector is None:
+        return
+
+    surveillance_system.config['motion_detection']['threshold'] = surveillance_system.motion_detector.threshold
 
     # Сохранить в файл
     with open('config.json', 'w') as f:
