@@ -23,6 +23,7 @@ class RecordingManager:
         self.retention_days = config['recording']['retention_days']
         self.max_storage_gb = config['recording']['max_storage_gb']
         self.post_record_seconds = config['recording']['post_record_seconds']
+        self.continuous_recording = config['recording'].get('continuous_recording', False)
 
         # Состояние записи
         self.is_recording = False
@@ -52,15 +53,29 @@ class RecordingManager:
     def generate_filename(self, event_type: str = "motion") -> str:
         """Генерация имени файла с timestamp"""
         timestamp = datetime.now().strftime("%m.%d_%H.%M")
-        filename = f"{timestamp}.mp4"
+
+        # Добавляем префикс для типа записи
+        if self.continuous_recording:
+            prefix = "cont"  # Непрерывная запись
+        else:
+            prefix = "motion"  # Запись по движению
+
+        filename = f"{prefix}_{timestamp}.mp4"
         full_path = self.storage_path / filename
         return str(full_path)
 
     def should_start_recording(self, motion_detected: bool) -> bool:
         """Определить, нужно ли начинать запись"""
+        # Непрерывная запись - всегда пишем
+        if self.continuous_recording and not self.is_recording:
+            logger.info("Начало непрерывной записи")
+            return True
+
+        # Запись по движению
         if motion_detected and not self.is_recording:
             logger.info("Обнаружено движение, начало записи")
             return True
+
         return False
 
     def should_stop_recording(self, motion_detected: bool, framerate: int = 15) -> bool:
@@ -68,14 +83,18 @@ class RecordingManager:
         if not self.is_recording:
             return False
 
-        # Проверка сегментации по времени
+        # Проверка сегментации по времени (для обоих режимов)
         if self.recording_start_time:
             duration = time.time() - self.recording_start_time
             if duration >= self.segment_duration:
                 logger.info(f"Сегмент завершён ({duration:.1f}s), ротация файла")
                 return True
 
-        # Проверка post-record таймера
+        # Непрерывная запись - не останавливаемся по отсутствию движения
+        if self.continuous_recording:
+            return False
+
+        # Запись по движению - проверка post-record таймера
         if motion_detected:
             self.last_motion_time = time.time()
             self.frames_since_motion = 0

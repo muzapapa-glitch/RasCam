@@ -34,7 +34,8 @@
     "retention_days": 30,
     "pre_record_seconds": 5,
     "post_record_seconds": 10,
-    "max_storage_gb": 100
+    "max_storage_gb": 100,
+    "continuous_recording": false
   },
   "streaming": {
     "enabled": true,
