@@ -147,10 +147,10 @@ class CameraManager:
                 self.current_output = None
 
                 # Вернуться к RTSP стримингу если был активен
-                if self.rtsp_output:
-                    self.encoder.output = self.rtsp_output
-                    self.picam2.start_encoder(self.encoder)
-                    logger.info("RTSP стрим восстановлен")
+                if self.config.get('streaming', {}).get('enabled', False):
+                    # Перезапустить RTSP стриминг (ffmpeg мог упасть)
+                    logger.info("Перезапуск RTSP стриминга после записи")
+                    self._restart_rtsp_streaming()
                 else:
                     # Или к circular buffer если RTSP не был активен
                     self.encoder.output = self.circular_output
@@ -162,6 +162,28 @@ class CameraManager:
         except Exception as e:
             logger.error(f"Ошибка остановки записи: {e}")
             return False
+
+    def _restart_rtsp_streaming(self):
+        """Перезапуск RTSP стриминга (убить старый ffmpeg и запустить новый)"""
+        try:
+            # Убить старый ffmpeg если есть
+            if self.ffmpeg_process:
+                try:
+                    self.ffmpeg_process.terminate()
+                    self.ffmpeg_process.wait(timeout=2)
+                except:
+                    try:
+                        self.ffmpeg_process.kill()
+                    except:
+                        pass
+                self.ffmpeg_process = None
+                self.rtsp_output = None
+
+            # Запустить новый
+            self.start_streaming()
+
+        except Exception as e:
+            logger.error(f"Ошибка перезапуска RTSP: {e}")
 
     def is_recording(self):
         """Проверка, идёт ли сейчас запись"""
