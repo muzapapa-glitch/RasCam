@@ -22,6 +22,7 @@ class CameraManager:
         self.circular_output = None
         self.current_output = None
         self.current_file = None
+        self.rtsp_output = None
 
     def initialize(self):
         """Инициализация камеры с dual-stream конфигурацией"""
@@ -90,6 +91,10 @@ class CameraManager:
 
             logger.info("Камера запущена, захват видео активен")
 
+            # Запуск RTSP стриминга (если включен)
+            if self.config.get('streaming', {}).get('enabled', False):
+                self.start_streaming()
+
         except Exception as e:
             logger.error(f"Ошибка запуска камеры: {e}")
             raise
@@ -113,10 +118,35 @@ class CameraManager:
             from picamera2.outputs import FfmpegOutput
             self.current_output = FfmpegOutput(filename)
 
-            # Остановить энкодер, сменить output, запустить снова
-            self.picam2.stop_encoder()
-            self.encoder.output = self.current_output
-            self.picam2.start_encoder(self.encoder)
+            # Если RTSP стриминг активен, используем tee для записи в оба места
+            if self.rtsp_output:
+                # ffmpeg с tee - пишем и в файл, и в RTSP одновременно
+                streaming_config = self.config.get('streaming', {})
+                rtsp_url = streaming_config.get('mediamtx_url', 'rtsp://localhost:8554/cam1')
+                username = streaming_config.get('username', 'admin')
+                password = streaming_config.get('password', 'changeme')
+
+                if '://' in rtsp_url:
+                    protocol, rest = rtsp_url.split('://', 1)
+                    rtsp_url_with_auth = f"{protocol}://{username}:{password}@{rest}"
+                else:
+                    rtsp_url_with_auth = rtsp_url
+
+                # Создаём output с tee для записи в файл + RTSP
+                tee_output = FfmpegOutput(
+                    f'-f tee -map 0:v "[f=rtsp]{rtsp_url_with_auth}|[f=mp4]{filename}"',
+                    audio=False
+                )
+
+                self.picam2.stop_encoder()
+                self.encoder.output = tee_output
+                self.picam2.start_encoder(self.encoder)
+                self.current_output = tee_output
+            else:
+                # Просто запись в файл
+                self.picam2.stop_encoder()
+                self.encoder.output = self.current_output
+                self.picam2.start_encoder(self.encoder)
 
             return True
 
@@ -130,10 +160,16 @@ class CameraManager:
             if self.current_output:
                 logger.info("Остановка записи")
 
-                # Остановить энкодер, сменить output обратно, запустить снова
+                # Остановить энкодер
                 self.picam2.stop_encoder()
                 self.current_output = None
-                self.encoder.output = self.circular_output
+
+                # Вернуться к RTSP стримингу если был активен, иначе к circular buffer
+                if self.rtsp_output:
+                    self.encoder.output = self.rtsp_output
+                else:
+                    self.encoder.output = self.circular_output
+
                 self.picam2.start_encoder(self.encoder)
 
                 return True
@@ -146,6 +182,47 @@ class CameraManager:
     def is_recording(self):
         """Проверка, идёт ли сейчас запись"""
         return self.current_output is not None
+
+    def start_streaming(self):
+        """Запуск RTSP стриминга в MediaMTX"""
+        try:
+            streaming_config = self.config.get('streaming', {})
+            if not streaming_config.get('enabled', False):
+                return False
+
+            from picamera2.outputs import FfmpegOutput
+
+            # RTSP URL для MediaMTX
+            rtsp_url = streaming_config.get('mediamtx_url', 'rtsp://localhost:8554/cam1')
+            username = streaming_config.get('username', 'admin')
+            password = streaming_config.get('password', 'changeme')
+
+            # Формируем URL с авторизацией
+            if '://' in rtsp_url:
+                protocol, rest = rtsp_url.split('://', 1)
+                rtsp_url_with_auth = f"{protocol}://{username}:{password}@{rest}"
+            else:
+                rtsp_url_with_auth = rtsp_url
+
+            logger.info(f"Запуск RTSP стриминга в MediaMTX: {rtsp_url}")
+
+            # Создаём FfmpegOutput для стриминга
+            self.rtsp_output = FfmpegOutput(
+                rtsp_url_with_auth,
+                audio=False
+            )
+
+            # Переключаем encoder на RTSP output
+            self.picam2.stop_encoder()
+            self.encoder.output = self.rtsp_output
+            self.picam2.start_encoder(self.encoder)
+
+            logger.info("RTSP стриминг запущен")
+            return True
+
+        except Exception as e:
+            logger.error(f"Ошибка запуска RTSP стриминга: {e}")
+            return False
 
     def adjust_framerate(self, new_fps):
         """Динамическая настройка FPS (для thermal throttling)"""
@@ -179,6 +256,10 @@ class CameraManager:
 
             if self.encoder:
                 self.picam2.stop_encoder()
+
+            if self.rtsp_output:
+                logger.info("Остановка RTSP стриминга")
+                self.rtsp_output = None
 
             if self.picam2:
                 self.picam2.stop()
