@@ -113,7 +113,7 @@ class CameraManager:
             return None, None
 
     def start_recording(self, filename):
-        """Начать запись в файл (БЕЗ остановки RTSP стрима)"""
+        """Начать запись в файл"""
         try:
             logger.info(f"Начало записи: {filename}")
 
@@ -121,37 +121,14 @@ class CameraManager:
             file_output = FfmpegOutput(filename)
             self.current_output = file_output
 
-            # Если RTSP активен - добавляем file_output к существующему rtsp_output
-            # используя encoder с несколькими outputs (запись идёт параллельно)
-            if self.rtsp_output:
-                # ВАЖНО: НЕ останавливаем encoder!
-                # Добавляем второй output для файла
-                # picamera2 поддерживает список outputs
-                self.picam2.stop_encoder()
+            # Остановить encoder и переключить на file output
+            self.picam2.stop_encoder()
+            self.encoder.output = file_output
+            self.picam2.start_encoder(self.encoder)
 
-                # Создаём список outputs: RTSP + файл
-                from picamera2.outputs import Output
-
-                class MultiOutput(Output):
-                    """Wrapper для записи в несколько outputs одновременно"""
-                    def __init__(self, outputs):
-                        super().__init__()
-                        self.outputs = outputs
-
-                    def outputframe(self, frame, keyframe=True, timestamp=None):
-                        for output in self.outputs:
-                            output.outputframe(frame, keyframe, timestamp)
-
-                multi = MultiOutput([self.rtsp_output, file_output])
-                self.encoder.output = multi
-                self.picam2.start_encoder(self.encoder)
-
-                logger.info("Запись в файл + RTSP параллельно")
-            else:
-                # Просто запись в файл
-                self.picam2.stop_encoder()
-                self.encoder.output = file_output
-                self.picam2.start_encoder(self.encoder)
+            # RTSP поток прервётся, но это нормально для записи
+            # После окончания записи - восстановим RTSP
+            logger.info("Запись начата, RTSP временно приостановлен")
 
             return True
 
@@ -160,7 +137,7 @@ class CameraManager:
             return False
 
     def stop_recording(self):
-        """Остановить текущую запись"""
+        """Остановить текущую запись и восстановить RTSP"""
         try:
             if self.current_output:
                 logger.info("Остановка записи")
@@ -169,13 +146,15 @@ class CameraManager:
                 self.picam2.stop_encoder()
                 self.current_output = None
 
-                # Вернуться к RTSP стримингу если был активен, иначе к circular buffer
+                # Вернуться к RTSP стримингу если был активен
                 if self.rtsp_output:
                     self.encoder.output = self.rtsp_output
+                    self.picam2.start_encoder(self.encoder)
+                    logger.info("RTSP стрим восстановлен")
                 else:
+                    # Или к circular buffer если RTSP не был активен
                     self.encoder.output = self.circular_output
-
-                self.picam2.start_encoder(self.encoder)
+                    self.picam2.start_encoder(self.encoder)
 
                 return True
             return False
