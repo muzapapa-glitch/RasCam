@@ -8,7 +8,7 @@ import logging
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder, Quality
 from picamera2.outputs import CircularOutput, FileOutput
-from libcamera import Transform
+from libcamera import Transform, controls
 import time
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,12 @@ class CameraManager:
             )
 
             self.picam2.configure(video_config)
+
+            # Включить постоянный автофокус для Camera Module 3
+            self.picam2.set_controls({
+                "AfMode": controls.AfModeEnum.Continuous,
+                "AfSpeed": controls.AfSpeedEnum.Fast
+            })
 
             # Настройка H.264 энкодера (аппаратное ускорение через GPU)
             bitrate = self.config['video']['bitrate']
