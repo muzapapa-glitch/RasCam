@@ -657,14 +657,34 @@
             if (selectedRecordings.size === 0) return;
 
             const files = Array.from(selectedRecordings);
-            files.forEach(filename => {
-                const link = document.createElement('a');
-                link.href = `/api/recording/${filename}`;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
+
+            // Один файл - скачать напрямую
+            if (files.length === 1) {
+                window.open(`/api/recording/${files[0]}`, '_blank');
+                return;
+            }
+
+            // Несколько файлов - скачать как ZIP
+            fetch('/api/recordings/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filenames: files })
+            })
+                .then(res => res.blob())
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `recordings_${new Date().getTime()}.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(err => {
+                    console.error('Error downloading files:', err);
+                    alert('Ошибка скачивания файлов');
+                });
         }
 
         function deleteSelected() {

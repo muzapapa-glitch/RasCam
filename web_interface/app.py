@@ -6,6 +6,8 @@ Flask веб-интерфейс для RasCam
 import json
 import logging
 import sys
+import zipfile
+import io
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, render_template, jsonify, request, send_file, Response
@@ -98,6 +100,46 @@ def api_delete_recording(filename):
             return jsonify({'error': 'Failed to delete'}), 500
 
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/recordings/download', methods=['POST'])
+def api_download_multiple():
+    """API: скачать несколько записей как ZIP"""
+    if surveillance_system is None or surveillance_system.recorder is None:
+        return jsonify({'error': 'Recorder not initialized'}), 500
+
+    try:
+        data = request.json
+        filenames = data.get('filenames', [])
+
+        if not filenames:
+            return jsonify({'error': 'No files specified'}), 400
+
+        storage_path = Path(surveillance_system.config['recording']['storage_path'])
+
+        # Создать ZIP в памяти
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for filename in filenames:
+                file_path = storage_path / filename
+
+                if not file_path.exists() or file_path.suffix != '.mp4':
+                    continue
+
+                zip_file.write(file_path, filename)
+
+        zip_buffer.seek(0)
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'recordings_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip'
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка создания ZIP: {e}")
         return jsonify({'error': str(e)}), 500
 
 
