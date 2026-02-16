@@ -198,6 +198,40 @@
             display: flex;
         }
 
+        .download-progress {
+            display: none;
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .download-progress.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #000;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .progress-text {
+            color: #888;
+            font-size: 12px;
+            text-align: center;
+        }
+
         button {
             background: #4CAF50;
             color: white;
@@ -496,10 +530,17 @@
                 <div class="bulk-actions" id="bulkActions">
                     <span style="color: #4CAF50;"><span id="selectedCount">0</span> выбрано</span>
                     <div style="display: flex; gap: 8px;">
-                        <button onclick="downloadSelected()">Скачать</button>
+                        <button id="downloadBtn" onclick="downloadSelected()">Скачать</button>
                         <button class="danger" onclick="deleteSelected()">Удалить</button>
                         <button class="secondary" onclick="clearSelection()">Отменить</button>
                     </div>
+                </div>
+                <div class="download-progress" id="downloadProgress">
+                    <div style="color: #4CAF50; margin-bottom: 5px;">Подготовка архива...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Оценка времени...</div>
                 </div>
                 <div class="recordings-list" id="recordingsList">
                     <div class="loading">Загрузка записей...</div>
@@ -664,26 +705,77 @@
                 return;
             }
 
-            // Несколько файлов - скачать как ZIP
-            fetch('/api/recordings/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filenames: files })
-            })
-                .then(res => res.blob())
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `recordings_${new Date().getTime()}.zip`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
+            // Деактивировать кнопку
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = 'Скачивание...';
+
+            // Показать прогресс
+            const progressDiv = document.getElementById('downloadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressDiv.classList.add('show');
+
+            // Получить размеры файлов для оценки времени
+            fetch('/api/recordings')
+                .then(res => res.json())
+                .then(allRecordings => {
+                    const selectedFiles = allRecordings.filter(r => files.includes(r.filename));
+                    const totalSizeMB = selectedFiles.reduce((sum, f) => sum + f.size_mb, 0);
+
+                    // Оценка: ~20 MB/сек на сжатие + передачу
+                    const estimatedSeconds = Math.ceil(totalSizeMB / 20);
+
+                    progressText.textContent = `${files.length} файлов (${totalSizeMB.toFixed(1)} MB) • ~${estimatedSeconds} сек`;
+
+                    // Анимация прогресса
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 100 / (estimatedSeconds * 10); // 10 обновлений в секунду
+                        if (progress >= 95) {
+                            clearInterval(interval);
+                            progress = 95; // Останавливаем на 95% до реального завершения
+                        }
+                        progressFill.style.width = progress + '%';
+                    }, 100);
+
+                    // Скачать ZIP
+                    return fetch('/api/recordings/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filenames: files })
+                    })
+                        .then(res => res.blob())
+                        .then(blob => {
+                            clearInterval(interval);
+                            progressFill.style.width = '100%';
+                            progressText.textContent = 'Завершено!';
+
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `recordings_${new Date().getTime()}.zip`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+
+                            // Скрыть прогресс через 1 секунду
+                            setTimeout(() => {
+                                progressDiv.classList.remove('show');
+                                downloadBtn.disabled = false;
+                                downloadBtn.textContent = 'Скачать';
+                                progressFill.style.width = '0%';
+                            }, 1000);
+                        });
                 })
                 .catch(err => {
                     console.error('Error downloading files:', err);
                     alert('Ошибка скачивания файлов');
+                    progressDiv.classList.remove('show');
+                    downloadBtn.disabled = false;
+                    downloadBtn.textContent = 'Скачать';
+                    progressFill.style.width = '0%';
                 });
         }
 
