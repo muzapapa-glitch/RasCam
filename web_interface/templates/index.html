@@ -537,21 +537,18 @@
                         return;
                     }
 
-                    list.innerHTML = recordings.map(rec => {
-                        const duration = rec.duration ? formatDuration(rec.duration) : '--:--';
-                        return `
-                            <div class="recording-item">
-                                <div class="recording-info">
-                                    <div class="recording-filename">${rec.filename}</div>
-                                    <div class="recording-meta">${rec.size_mb} MB · ${duration} · ${new Date(rec.created).toLocaleString('ru-RU')}</div>
-                                </div>
-                                <div class="recording-actions">
-                                    <button class="secondary" onclick="playRecording('${rec.filename}')">▶</button>
-                                    <button class="danger" onclick="deleteRecording('${rec.filename}')">🗑</button>
-                                </div>
+                    list.innerHTML = recordings.map(rec => `
+                        <div class="recording-item">
+                            <div class="recording-info">
+                                <div class="recording-filename">${rec.filename}</div>
+                                <div class="recording-meta">${rec.size_mb} MB · ${new Date(rec.created).toLocaleString('ru-RU')}</div>
                             </div>
-                        `;
-                    }).join('');
+                            <div class="recording-actions">
+                                <button class="secondary" onclick="playRecording('${rec.filename}')">▶</button>
+                                <button class="danger" onclick="deleteRecording('${rec.filename}')">🗑</button>
+                            </div>
+                        </div>
+                    `).join('');
                 })
                 .catch(err => console.error('Error fetching recordings:', err));
         }

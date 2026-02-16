@@ -142,13 +142,11 @@ class RecordingManager:
         try:
             for file_path in sorted(self.storage_path.glob("*.mp4"), reverse=True):
                 stat = file_path.stat()
-                duration = self._get_video_duration(file_path)
 
                 recordings.append({
                     'filename': file_path.name,
                     'path': str(file_path),
                     'size_mb': round(stat.st_size / (1024 * 1024), 2),
-                    'duration': duration,
                     'created': datetime.fromtimestamp(stat.st_ctime),
                     'modified': datetime.fromtimestamp(stat.st_mtime)
                 })
@@ -157,31 +155,6 @@ class RecordingManager:
             logger.error(f"Ошибка получения списка записей: {e}")
 
         return recordings
-
-    def _get_video_duration(self, file_path: Path) -> int:
-        """Получить длительность видео в секундах через ffprobe"""
-        try:
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format=duration',
-                    '-of', 'default=noprint_wrappers=1:nokey=1',
-                    str(file_path)
-                ],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-
-            if result.returncode == 0 and result.stdout.strip():
-                return int(float(result.stdout.strip()))
-            else:
-                return 0
-
-        except Exception as e:
-            logger.debug(f"Не удалось получить длительность для {file_path.name}: {e}")
-            return 0
 
     def cleanup_old_recordings(self):
         """Удаление старых записей по retention policy"""
