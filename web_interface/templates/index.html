@@ -749,6 +749,11 @@
             const end = new Date(modified);
             const seconds = Math.floor((end - start) / 1000);
 
+            // Если разница меньше 5 секунд - файл еще пишется
+            if (seconds < 5) {
+                return 'Запись...';
+            }
+
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
             return `${mins}:${secs.toString().padStart(2, '0')}`;
