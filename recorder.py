@@ -140,7 +140,11 @@ class RecordingManager:
         recordings = []
 
         try:
-            for file_path in sorted(self.storage_path.glob("*.mp4"), reverse=True):
+            # Получить все файлы и отсортировать по дате создания (новые первые)
+            files = list(self.storage_path.glob("*.mp4"))
+            files_sorted = sorted(files, key=lambda x: x.stat().st_ctime, reverse=True)
+
+            for file_path in files_sorted:
                 stat = file_path.stat()
 
                 recordings.append({
