@@ -381,6 +381,23 @@
                         </div>
                     </div>
 
+                    <!-- Ориентация видео -->
+                    <div style="margin-top: 15px; padding: 15px; background: #1a1a1a; border-radius: 4px;">
+                        <strong style="color: #4CAF50;">Ориентация видео</strong>
+                        <p style="color: #888; font-size: 12px; margin-top: 4px; margin-bottom: 12px;">
+                            Текущий поворот: <span id="currentRotation">--</span>°
+                        </p>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                            <button class="secondary" onclick="setRotation(0)">0°</button>
+                            <button class="secondary" onclick="setRotation(90)">90°</button>
+                            <button class="secondary" onclick="setRotation(180)">180°</button>
+                            <button class="secondary" onclick="setRotation(270)">270°</button>
+                        </div>
+                        <p style="color: #f44336; font-size: 11px; margin-top: 8px;">
+                            ⚠️ Требуется перезапуск системы
+                        </p>
+                    </div>
+
                     <!-- Управление чувствительностью детектора движения -->
                     <div style="margin-top: 15px; padding: 15px; background: #1a1a1a; border-radius: 4px;">
                         <strong style="color: #4CAF50;">Чувствительность детектора</strong>
@@ -865,6 +882,39 @@
                 });
         }
 
+        // Функции управления ориентацией
+        function updateRotationDisplay() {
+            fetch('/api/camera/rotation')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.rotation !== undefined) {
+                        document.getElementById('currentRotation').textContent = data.rotation;
+                    }
+                })
+                .catch(err => console.error('Error fetching rotation:', err));
+        }
+
+        function setRotation(degrees) {
+            fetch('/api/camera/rotation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rotation: degrees })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        updateRotationDisplay();
+                        alert(`Ориентация изменена на ${degrees}°\n\nТребуется перезапуск:\nsudo systemctl restart rascam`);
+                    } else {
+                        alert('Ошибка установки ориентации');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error setting rotation:', err);
+                    alert('Ошибка связи с сервером');
+                });
+        }
+
         // Функции управления чувствительностью
         function updateSensitivityDisplay() {
             fetch('/api/motion/sensitivity')
@@ -955,6 +1005,7 @@
         updateZones();
         updateRtspUrl();
         updateSensitivityDisplay();
+        updateRotationDisplay();
         initZoneDrawing();
 
         updateInterval = setInterval(() => {

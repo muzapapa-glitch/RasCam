@@ -34,9 +34,28 @@ class CameraManager:
             self.picam2 = Picamera2()
 
             # Настройка трансформации (поворот, отражение)
+            rotation = self.config['camera'].get('rotation', 0)
+
+            # libcamera использует transpose вместо rotation
+            # 0° = no transpose, 90° = transpose, 180° = hflip+vflip, 270° = transpose+hflip+vflip
+            hflip = self.config['camera'].get('hflip', False)
+            vflip = self.config['camera'].get('vflip', False)
+            transpose = False
+
+            if rotation == 90:
+                transpose = True
+            elif rotation == 180:
+                hflip = not hflip
+                vflip = not vflip
+            elif rotation == 270:
+                transpose = True
+                hflip = not hflip
+                vflip = not vflip
+
             transform = Transform(
-                hflip=self.config['camera'].get('hflip', False),
-                vflip=self.config['camera'].get('vflip', False)
+                hflip=hflip,
+                vflip=vflip,
+                transpose=transpose
             )
 
             # Dual stream: main для записи, lores для детекции движения

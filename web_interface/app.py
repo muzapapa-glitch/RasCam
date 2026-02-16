@@ -284,6 +284,54 @@ def api_set_threshold():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/camera/rotation', methods=['GET'])
+def api_get_rotation():
+    """API: получить текущую ориентацию"""
+    if surveillance_system is None:
+        return jsonify({'error': 'System not initialized'}), 500
+
+    try:
+        return jsonify({
+            'rotation': surveillance_system.config['camera'].get('rotation', 0),
+            'hflip': surveillance_system.config['camera'].get('hflip', False),
+            'vflip': surveillance_system.config['camera'].get('vflip', False)
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/camera/rotation', methods=['POST'])
+def api_set_rotation():
+    """API: установить ориентацию (требует перезапуска)"""
+    if surveillance_system is None:
+        return jsonify({'error': 'System not initialized'}), 500
+
+    try:
+        data = request.json
+        rotation = data.get('rotation')
+
+        if rotation not in [0, 90, 180, 270]:
+            return jsonify({'error': 'Rotation must be 0, 90, 180, or 270'}), 400
+
+        surveillance_system.config['camera']['rotation'] = rotation
+
+        # Сохранить в конфигурацию
+        with open('config.json', 'w') as f:
+            json.dump(surveillance_system.config, f, indent=2)
+
+        logger.info(f"Ориентация изменена на {rotation}° (требуется перезапуск)")
+
+        return jsonify({
+            'success': True,
+            'rotation': rotation,
+            'restart_required': True
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/config')
 def api_get_config():
     """API: получить текущую конфигурацию"""
