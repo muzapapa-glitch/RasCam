@@ -538,7 +538,7 @@
                     }
 
                     list.innerHTML = recordings.map(rec => {
-                        const duration = calculateDuration(rec.created, rec.modified);
+                        const duration = calculateDuration(rec.created, rec.modified, rec.size_mb);
                         return `
                             <div class="recording-item">
                                 <div class="recording-info">
@@ -743,20 +743,27 @@
                 });
         }
 
-        // Вычисление длительности по разнице created и modified
-        function calculateDuration(created, modified) {
-            const start = new Date(created);
-            const end = new Date(modified);
-            const seconds = Math.floor((end - start) / 1000);
+        // Вычисление длительности по размеру файла (битрейт ~5 Mbps)
+        function calculateDuration(created, modified, sizeMb) {
+            // Если файл создан недавно (меньше минуты назад) - скорее всего пишется
+            const createdDate = new Date(created);
+            const now = new Date();
+            const ageSeconds = Math.floor((now - createdDate) / 1000);
 
-            // Если разница меньше 5 секунд - файл еще пишется
-            if (seconds < 5) {
+            if (ageSeconds < 60) {
                 return 'Запись...';
             }
 
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
+            // Оценка длительности по размеру: 5 Mbps битрейт
+            // 5 Mbps = 0.625 MB/s = 37.5 MB/min
+            const estimatedMinutes = Math.floor(sizeMb / 37.5);
+            const estimatedSeconds = Math.floor((sizeMb % 37.5) / 0.625);
+
+            if (estimatedMinutes === 0 && estimatedSeconds === 0) {
+                return '< 1:00';
+            }
+
+            return `~${estimatedMinutes}:${estimatedSeconds.toString().padStart(2, '0')}`;
         }
 
         // Функция рисования зон мышью
