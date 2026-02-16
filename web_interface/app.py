@@ -10,6 +10,7 @@ import zipfile
 import io
 from pathlib import Path
 from datetime import datetime
+from functools import wraps
 from flask import Flask, render_template, jsonify, request, send_file, Response
 
 # Добавить родительскую директорию в путь для импорта модулей
@@ -24,6 +25,36 @@ surveillance_system = None
 # Logger
 logger = logging.getLogger(__name__)
 
+# Basic Auth
+def check_auth(username, password):
+    """Проверка логина/пароля"""
+    if surveillance_system is None:
+        return False
+
+    auth_config = surveillance_system.config.get('web_interface', {}).get('auth', {})
+    if not auth_config.get('enabled', False):
+        return True  # Auth отключен
+
+    return (username == auth_config.get('username', 'admin') and
+            password == auth_config.get('password', 'changeme'))
+
+def authenticate():
+    """Запрос аутентификации"""
+    return Response(
+        'Требуется авторизация.\n'
+        'Введите логин и пароль.', 401,
+        {'WWW-Authenticate': 'Basic realm="RasCam Login"'})
+
+def requires_auth(f):
+    """Декоратор для защиты маршрутов"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
 
 def set_surveillance_system(system):
     """Установить ссылку на систему наблюдения"""
@@ -32,12 +63,14 @@ def set_surveillance_system(system):
 
 
 @app.route('/')
+@requires_auth
 def index():
     """Главная страница"""
     return render_template('index.html')
 
 
 @app.route('/api/status')
+@requires_auth
 def api_status():
     """API: получить статус системы"""
     if surveillance_system is None:

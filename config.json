@@ -54,7 +54,12 @@
     "enabled": true,
     "host": "0.0.0.0",
     "port": 5000,
-    "debug": false
+    "debug": false,
+    "auth": {
+      "enabled": true,
+      "username": "admin",
+      "password": "changeme"
+    }
   },
   "logging": {
     "level": "INFO",
